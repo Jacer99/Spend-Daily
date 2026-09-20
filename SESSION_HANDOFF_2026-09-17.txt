@@ -1,0 +1,240 @@
+================================================================
+POCKETMONEY — MASTER HANDOFF — 2026-09-17 (end of day)
+================================================================
+
+THIS FILE SUPERSEDES ALL EARLIER HANDOFFS[cite: 2].
+It is the single source of truth. If it conflicts with
+SESSION_HANDOFF_2026-09-14/15, THIS FILE WINS[cite: 2].
+
+================================================================
+0. TOP OF MIND FOR NEXT SESSION
+================================================================
+
+1. Sticky Header Fix (First item tomorrow):
+   When scrolling down on HomeScreen, the header collapses into
+   a sticky top bar that currently displays Ivy's total account
+   balance. Replace this with the Safe-to-Spend hero amount
+   (e.g., 57.40 TND). If no budget is configured or loading, hide
+   it / keep it blank. Do not expose overall balance on scroll.
+
+2. Task 27 — Period summary on Home:
+   Below SafeToSpendCard, render:
+     Budget        450.00 TND
+     Spent         163.00 TND
+     Available     187.00 TND
+     Days left       5
+   (Reserved is intentionally omitted in v1).
+
+3. Task A (Payday indicator) & Task 25b (Icons/Splash) are COMMITTED.
+   Working tree is clean.
+
+4. Reservations are OUT of v1. Explicitly confirmed.
+
+================================================================
+1. WHAT TO PASTE TO AI AT SESSION START
+================================================================
+
+Paste this entire file[cite: 2].
+
+Then run and paste output[cite: 2]:
+
+    cd "C:\Dev\Ivy-wallet"
+    git log --oneline -5
+    git status
+
+Working tree should be clean on branch development.
+
+================================================================
+2. ENVIRONMENT — DO NOT ALTER[cite: 2]
+================================================================
+
+Product:        PocketMoney[cite: 2]
+Tagline:        "One number a day."[cite: 2]
+Fork of:        Ivy Wallet (GPL-3.0), archived 2024-11-05[cite: 2]
+Local path:     C:\Dev\Ivy-wallet[cite: 2]
+Branch:         development[cite: 2]
+Baseline tag:   ivy-original-baseline[cite: 2]
+Remotes[cite: 2]:
+  origin   → https://github.com/Jacer99/ivy-wallet-daily-budget.git[cite: 2]
+  upstream → https://github.com/Ivy-Apps/ivy-wallet.git (read-only)[cite: 2]
+
+Toolchain (frozen)[cite: 2]:
+  Gradle wrapper:     8.8[cite: 2]
+  Gradle JDK:         17  (C:\Users\JACER\.jdks\jbr-17.0.14)[cite: 2]
+  Kotlin:             2.0.20[cite: 2]
+  AGP:                8.5.2[cite: 2]
+  Android Studio:     2026.1.4[cite: 2]
+  Emulator:           Pixel 8, API 37.1[cite: 2]
+  Target phone:       Samsung Galaxy S25 Ultra (both users)[cite: 2]
+
+PowerShell: every fresh window starts in C:\Users\JACER[cite: 2].
+Always "cd C:\Dev\Ivy-wallet" first[cite: 2].
+
+================================================================
+3. GIT HISTORY — VERIFIED COMMITS (newest first)
+================================================================
+
+ff82e136  Round SafeToSpendCard TND display to 2 decimals
+55ce29ef  Add payday indicator to SafeToSpendCard for Salary periods
+2ef1e165  Polish Home layout, Settings icons, remove disclaimer
+ebdfaeda  Replace launcher icon and splash logo with PocketMoney wallet
+b34def07  Replace clay with vibrant M3 palette + Quick access and card tweaks
+7a047853  Rebrand to PocketMoney: TND default, English-only, personal touches
+fa531291  Allow removing a configured budget
+250641f3  Gate Apply-to-allowance selector on configured budget (Task 16b)
+af162fed  Polish Home hierarchy and fix Settings icon duplication
+61d91164  Add live reactivity to SafeToSpendCard via DataObserver
+
+================================================================
+4. WHAT LANDED (summary)
+================================================================
+
+Tasks 1–23 = COMPLETE (domain layer, migrations, backup,
+    engine, safe-to-spend card, home wiring, reactivity,
+    historical edit propagation, budget config screen,
+    remove-budget feature, apply-to-allowance selector,
+    Home hierarchy polish, regression pass)[cite: 2]
+
+Task 24 = Rebrand to PocketMoney (COMMITTED)[cite: 2]
+  - App name, TND default, English-only[cite: 2]
+  - Onboarding currency step removed[cite: 2]
+  - Settings: external Ivy rows removed; love message added[cite: 2]
+  - Quick access: "Share PocketMoney" → "Spending budget"[cite: 2]
+  - Export filename prefixes → PocketMoney*[cite: 2]
+  - Revolut → Banque de Tunisie[cite: 2]
+  - License credit corrected to GPL-3.0[cite: 2]
+
+Task 25a = Vibrant M3 palette (COMMITTED)[cite: 2]
+  - Primary accent: clay → vivid violet #7C4DFF (light) / #9D7BFF (dark)[cite: 2]
+  - Secondary: teal #00BFA5[cite: 2]
+  - Tertiary: coral #FF6E40[cite: 2]
+  - Success: #00C853 / #5EE87F[cite: 2]
+  - Error: #FF5252 / #FF8A8A[cite: 2]
+  - Light bg: #FDFBFF; Dark bg: #1C1B1F; AMOLED: #000000[cite: 2]
+  - Both M3 and legacy color systems updated[cite: 2]
+
+Task 25b = Launcher icon + splash logo (COMMITTED in ebdfaeda)
+  - PocketMoney wallet icon integrated into mipmap sets
+  - OnboardingSplashLogin.kt updated to pocketmoney_logo
+
+Task A = Payday indicator (COMMITTED in 55ce29ef)
+  - SafeToSpendCardState.Active gains paydayLabel: String?
+  - mapToSafeToSpendCardState computes "Payday today",
+    "Left until payday · 1 day", or "Left until payday · N days"
+  - Card displays indicator under the tomorrow row
+  - SafeToSpendMapperTest has full branch coverage
+
+SafeToSpendCard formatting tweak (COMMITTED in ff82e136)
+  - TND display rounded to 2 decimals on SafeToSpendCard (HALF_UP).
+  - Engine precision remains exact Long minor units.
+
+================================================================
+5. HOME SCROLL STICKY HEADER REPLACEMENT (Next up)
+================================================================
+
+Problem:
+  When the user scrolls down on HomeScreen, the collapsing toolbar
+  reveals Ivy's total net worth / account balance.
+  This conflicts with PocketMoney's "One number a day" core focus.
+
+Solution:
+  Replace the collapsed header balance with the Safe-to-Spend
+  hero number (e.g. 57.40 TND).
+  - If budget is active: show remaining daily allowance.
+  - If budget is missing / loading: keep it empty/clean.
+  - Never display overall account cash flow on scroll.
+
+Files to check:
+  - feature/home/src/main/java/com/ivy/home/HomeScreen.kt
+  - feature/home/src/main/java/com/ivy/home/HomeHeader.kt
+  - feature/home/src/main/java/com/ivy/home/HomeTopBar.kt
+
+================================================================
+6. KEY ARCHITECTURAL FACTS[cite: 2]
+================================================================
+
+Money[cite: 2]:
+  - Engine + new entities: Long minor units (TND = 3 decimals)[cite: 2]
+  - Ivy legacy: Double / BigDecimal[cite: 2]
+  - Conversion only at mapper boundary via CurrencyMinorUnits[cite: 2]
+  - NEVER Float, NEVER Double in new money fields[cite: 2]
+
+Time[cite: 2]:
+  - Instant → LocalDate via ZoneId parameter, never global[cite: 2]
+
+Budget pipeline[cite: 2]:
+  RoomDynamicBudgetConfigStore → GetDynamicBudgetSnapshotUseCase
+    → DynamicBudgetRepository → DynamicBudgetMapper →
+    DynamicBudgetEngine → BudgetSnapshot → mapToSafeToSpendCardState
+    → SafeToSpendCardState → SafeToSpendCard composable[cite: 2]
+
+Reactivity[cite: 2]:
+  - TransactionRepository posts DataWriteEvent.SaveTransactions[cite: 2]
+  - HomeViewModel collects DataObserver.writeEvents via
+    collectLatest and re-runs reload()[cite: 2]
+  - MutableSharedFlow buffered 16, DROP_OLDEST[cite: 2]
+  - LaunchedEffect(Unit) in uiState() handles first paint[cite: 2]
+
+================================================================
+7. LOCKED DECISIONS (do not revisit)[cite: 2]
+================================================================
+
+D1. TND is the only currency in v1. No multi-currency[cite: 2].
+D2. English-only. Non-English values-*/ directories deleted[cite: 2].
+D3. No cloud, no accounts, no sharing in v1. Local-only[cite: 2].
+D4. No parallel transaction systems. Everything reuses Ivy[cite: 2].
+D5. Money is Long minor units in new code[cite: 2].
+D6. New entities use @SerialName, isSynced/isDeleted pattern,
+    KSerializerInstant for Instants[cite: 2].
+D7. No destructive migrations. Ever[cite: 2].
+D8. Reactivity via DataObserver.writeEvents, not manual refresh[cite: 2].
+D9. CLAY IS DEAD. Vibrant M3 palette active[cite: 2].
+D10. No red, no warning icons, no punitive colors on the
+     safe-to-spend card[cite: 2].
+D11. Disclaimer screen is UNREACHABLE[cite: 2].
+D12. RESERVATIONS ARE OUT OF V1[cite: 2].
+D13. No further DB migrations expected before v1 ships (version: 133)[cite: 2].
+
+================================================================
+8. RESERVATIONS — EXPLICITLY OUT OF V1[cite: 2]
+================================================================
+
+ReservationEntity + DAO + Migration 131→132 exist in code, but
+are DORMANT[cite: 2]. Nothing reads from or writes to them in the running app[cite: 2].
+Do NOT wire reservations in v1[cite: 2]. Do NOT show "Reserved" in period
+summary[cite: 2].
+
+================================================================
+9. ROADMAP — CURRENT STATUS
+================================================================
+
+COMPLETED:
+  ✅ Tasks 1–25a Core domain, DB, UI card, rebrand, palette[cite: 2]
+  ✅ Task 25b Launcher icon + splash logo (ebdfaeda)
+  ✅ Task A   Payday indicator on SafeToSpendCard (55ce29ef)
+  ✅ Polish   TND rounded to 2 decimals on SafeToSpendCard (ff82e136)
+
+REMAINING FOR V1:
+  ☐ Home Scroll Header Fix: Replace collapsed balance with Safe-to-Spend
+  ☐ Task 27  Period summary on Home (Budget, Spent, Available, Days left)[cite: 2]
+  ☐ Task 28  "How is this calculated?" explanation UI[cite: 2]
+  ☐ Task 29  Income inclusion toggle in budget config[cite: 2]
+  ☐ Task 30  Device regression + accessibility pass[cite: 2]
+  ☐ Task 26  Safe-to-spend home-screen widget (Optional / non-blocking for v1)[cite: 2]
+
+================================================================
+10. HOW TO RESUME NEXT SESSION
+================================================================
+
+1. cd "C:\Dev\Ivy-wallet"[cite: 2]
+2. git status && git log --oneline -5[cite: 2]
+3. Paste this handoff file to the AI[cite: 2].
+4. State: "Handoff loaded. Start with the Home Scroll Header Fix
+   (replace collapsed balance with Safe-to-Spend amount), then
+   we move directly into Task 27."
+5. AI will provide recon commands, review outputs, and write
+   the implementation prompt.
+
+================================================================
+END OF HANDOFF
+================================================================

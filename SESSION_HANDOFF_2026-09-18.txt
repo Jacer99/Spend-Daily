@@ -1,0 +1,510 @@
+================================================================
+POCKETMONEY — MASTER HANDOFF — 2026-09-18 (end of day)
+================================================================
+
+THIS FILE SUPERSEDES ALL EARLIER HANDOFFS.
+It is the single source of truth. If it conflicts with
+SESSION_HANDOFF_2026-09-14/15/17, THIS FILE WINS.
+
+================================================================
+0. TOP OF MIND FOR NEXT SESSION (PROMPT 2 QUEUE)
+================================================================
+
+1. Galaxy S25 Ultra Speed Dial FAB Layout & Centering:
+   - "Add Expense" center button is currently not centered horizontally
+     on the wide screen of the Samsung Galaxy S25 Ultra.
+   - Scale down the 3 circular action buttons from 74dp to 62dp.
+   - Ensure the speed dial action container uses balanced horizontal
+     weighting so the elevated "Add Expense" FAB aligns dead-center
+     above the bottom dock's '+' trigger button.
+
+2. Home & Account Transaction Feed Cards:
+   - Transaction list items on Home and inside account screens remain
+     legacy flat cards.
+   - Refactor `TransactionCard.kt` and `HistoryDateDivider.kt` into
+     `LiquidGlassCard(shape = RoundedCornerShape(20.dp))` with
+     category-tinted circular icon badges and semantic text contrast.
+
+3. Statistics / Pie Chart Screen Theming:
+   - Tapping the "Income" or "Expenses" twin cards navigates to
+     `PieChartStatisticScreen`.
+   - The chart canvas, category list rows, and transaction breakdown
+     are unthemed legacy cards.
+   - Apply `.pocketMoneyBackground()` and frosted `LiquidGlassCard` rows.
+
+4. Transaction Creation & Edit Flow (`EditTransactionScreen.kt`):
+   - Wrap amount input, category picker, account selector, and
+     "Apply to allowance" toggle inside `LiquidGlassCard(shape = RoundedCornerShape(22.dp))`.
+   - Replace flat dialog background in `AmountModal.kt` with a frosted
+     glass sheet and theme the numeric keypad buttons.
+
+5. Specific Account Details Screen (`AccountDetailsScreen.kt`):
+   - Opened when tapping any vault card. Currently unthemed.
+   - Apply `.pocketMoneyBackground()`, vault hero card, and frosted list rows.
+
+6. Period Selection Modal (`ChoosePeriodModal.kt`):
+   - Month dropdown on the top right remains flat white/gray.
+   - Restyle into a frosted glass dialog with glowing selection chips.
+
+================================================================
+1. WHAT TO PASTE TO AI AT SESSION START
+================================================================
+
+Paste this entire file.
+
+Then run and paste output:
+
+    cd "C:\Dev\Ivy-wallet"
+    git log --oneline -5
+    git status
+
+Working tree should be clean on branch development.
+
+================================================================
+2. ENVIRONMENT — DO NOT ALTER
+================================================================
+
+Product:        PocketMoney[cite: 5]
+Tagline:        "One number a day."[cite: 5]
+Fork of:        Ivy Wallet (GPL-3.0), archived 2024-11-05[cite: 5]
+Local path:     C:\Dev\Ivy-wallet[cite: 5]
+Branch:         development[cite: 5]
+Baseline tag:   ivy-original-baseline[cite: 5]
+Remotes:[cite: 5]
+  origin   → https://github.com/Jacer99/ivy-wallet-daily-budget.git[cite: 5]
+  upstream → https://github.com/Ivy-Apps/ivy-wallet.git (read-only)[cite: 5]
+
+Toolchain (frozen):[cite: 5]
+  Gradle wrapper:     8.8[cite: 5]
+  Gradle JDK:         17  (C:\Users\JACER\.jdks\jbr-17.0.14)[cite: 5]
+  Kotlin:             2.0.20[cite: 5]
+  AGP:                8.5.2[cite: 5]
+  Android Studio:     2026.1.4[cite: 5]
+  Target phone:       Samsung Galaxy S25 Ultra (both users)[cite: 5]
+
+PowerShell: every fresh window starts in C:\Users\JACER.[cite: 5]
+Always "cd C:\Dev\Ivy-wallet" first.[cite: 5]
+
+================================================================
+3. WHAT LANDED (Full History to Date)
+================================================================
+
+A. Core Domain & Architecture (Tasks 1–23):[cite: 5]
+  - Domain layer, migrations (version: 133), backup/export pipeline.[cite: 5]
+  - DynamicBudgetEngine, ExpenseAllocationScheduler, SafeToSpendCard.[cite: 5]
+  - Reactive updates via DataObserver.writeEvents.[cite: 5]
+  - Historical transaction edit propagation.[cite: 5]
+  - DynamicBudgetConfigStore, spending budget configuration screen.[cite: 5]
+  - "Apply to allowance" selector gated on active budget.[cite: 5]
+  - Remove budget feature.[cite: 5]
+
+B. Rebrand & Design Tokens (Tasks 24–25b, Task A):
+  - Rebranded to PocketMoney: TND default, English-only.[cite: 5]
+  - External Ivy links and disclaimer screen eliminated.[cite: 5]
+  - Vibrant M3 palette + custom launcher wallet icon and splash screen.[cite: 5]
+  - Payday countdown indicator on SafeToSpendCard for Salary cycles.[cite: 5]
+  - SafeToSpendCard display rounded to 2 decimals (HALF_UP).[cite: 5]
+
+C. Liquid Glass Design System & Theme Engine (2026-09-18):
+  - `Modifier.pocketMoneyBackground(isDark)`: Reusable 3-stop radial
+    ambient mesh with smooth 400ms cross-fade animation.
+  - `Modifier.specularBorder(shape, isDark)`: 0.5dp top-down lighting
+    gradient simulating refractive glass edges.
+  - `LiquidGlassCard`: Adaptive container with translucent fills (obsidian
+    in dark mode, crisp pearl in light mode with subtle shadow).
+  - Dynamic theme engine: Binds `isAppInDarkTheme()` to `!UI.colors.isLight`.
+    Enables cycling: System (AUTO) → Light → Dark.
+  - Light mode contrast fix: Hero number uses warm copper gradient brush;
+    twin cards use Nordic Moss and Burnished Espresso gradients;
+    typography renders in high-contrast `pureInverse` (#111111).
+  - List padding: `contentPadding = PaddingValues(bottom = 110.dp)` on
+    Home, Categories, and Accounts LazyColumns prevents bottom dock overlap.
+  - Cleaned string formatting: Removed uninitialized `null` prefix bug
+    in `CategoriesScreen.kt`.
+  - Removed unstyled "Budget / Spent / Available / Days left" ghost text.
+  - Resolved merge conflicts in `DynamicBudgetEngine.kt`, `HomeHeader.kt`,
+    and `HomeTab.kt`. Sticky header now shows Safe-to-Spend on scroll.
+  - Configured mock `app/google-services.json` supporting both `com.ivy.wallet`
+    and `com.ivy.wallet.debug` for reliable local Gradle builds.
+
+================================================================
+4. KEY ARCHITECTURAL FACTS
+================================================================
+
+Money:[cite: 5]
+  - Engine + entities: Long minor units (1 TND = 1,000 millimes).[cite: 5]
+  - Legacy Ivy: Double / BigDecimal.[cite: 5]
+  - Conversions strictly at mapper boundary via CurrencyMinorUnits.[cite: 5]
+  - NEVER Float, NEVER Double in new domain/money calculations.[cite: 5]
+
+Time:[cite: 5]
+  - Instant → LocalDate via explicit ZoneId parameters, never global UTC.[cite: 5]
+
+Budget Pipeline:[cite: 5]
+  RoomDynamicBudgetConfigStore → GetDynamicBudgetSnapshotUseCase
+    → DynamicBudgetRepository → DynamicBudgetMapper →
+    DynamicBudgetEngine → BudgetSnapshot → mapToSafeToSpendCardState
+    → SafeToSpendCardState → SafeToSpendCard composable.[cite: 5]
+
+Reactivity:[cite: 5]
+  - TransactionRepository emits DataWriteEvent.SaveTransactions.[cite: 5]
+  - HomeViewModel collects DataObserver.writeEvents via collectLatest
+    and invokes reload().[cite: 5]
+  - MutableSharedFlow buffered 16, DROP_OLDEST.[cite: 5]
+  - LaunchedEffect(Unit) in uiState() handles initial paint.[cite: 5]
+
+================================================================
+5. LOCKED DECISIONS (do not revisit)
+================================================================
+
+D1.  TND is the only currency in v1. No multi-currency.[cite: 5]
+D2.  English-only. Non-English values-*/ directories deleted.[cite: 5]
+D3.  No cloud, no accounts, no server sync in v1. Local-only.[cite: 5]
+D4.  No parallel transaction systems. Everything reuses Ivy Room tables.[cite: 5]
+D5.  Money is Long minor units in new code.[cite: 5]
+D6.  New entities use @SerialName, isSynced/isDeleted pattern,
+     KSerializerInstant for Instants.[cite: 5]
+D7.  No destructive migrations. Ever. (Current DB version: 133).[cite: 5]
+D8.  Reactivity via DataObserver.writeEvents, not manual refresh.[cite: 5]
+D9.  Clay palette is dead. Vibrant Liquid Glass active.[cite: 5]
+D10. No punitive red warning cards on SafeToSpendCard.[cite: 5]
+D11. Disclaimer screen is unreachable.[cite: 5]
+D12. RESERVATIONS ARE OUT OF V1.[cite: 5]
+     ReservationEntity + DAO + Migration 131→132 exist in code, but
+     are DORMANT. Nothing reads from or writes to them.[cite: 5]
+D13. Native Compose Canvas/Brush/drawBehind only. No third-party blur libs.
+D14. Theme switching relies on `!UI.colors.isLight`. Never hardcode
+     `isSystemInDarkTheme()` inside screen composables.
+D15. Always enforce 110dp bottom contentPadding for scrollable lists
+     above the floating navigation dock.
+
+================================================================
+6. FULL ROADMAP & REMAINING DELIVERABLES
+================================================================
+
+PHASE 1: Liquid Glass UI Theming (Underway)
+  ☐ Prompt 2: Add/Edit Transaction Flow + Transaction Cards
+      - Center and scale down Add Transaction speed dial FABs (S25 Ultra layout).
+      - Theme `TransactionCard.kt` and `HistoryDateDivider.kt` with Liquid Glass.
+      - Theme `PieChartStatisticScreen.kt` (Home Income/Expense stats).
+      - Theme `EditTransactionScreen.kt` and `AmountModal.kt`.
+      - Theme `AccountDetailsScreen.kt` and `ChoosePeriodModal.kt`.
+  ☐ Prompt 3: Settings Cleanup & Ivy Link Removal
+      - Remove legacy Ivy release link/date in header.
+      - Theme Preferences, Backup & Restore, and Appearance rows.
+  ☐ Prompt 4: Secondary Modules
+      - Planned Payments, Budgets, and Loans tracker styling.
+
+PHASE 2: Core Feature Deliverables (Pending from 17/09)
+  ☐ Task 27: Period Summary Card on Home[cite: 5]
+      - Build a proper frosted `LiquidGlassCard` placed below SafeToSpendCard
+        displaying Budget, Spent, Available, Days left.[cite: 5]
+      - Must look like a styled glass card, not raw text.[cite: 5]
+  ☐ Task 28: "How is this calculated?" Explanation UI[cite: 5]
+      - Bottom sheet breaking down capacity, charges before today,
+        opening allowance, today's charges, and tomorrow projection.[cite: 5]
+  ☐ Task 29: Income Inclusion Toggle in Budget Config[cite: 5]
+      - Toggle switch in `DynamicBudgetConfigScreen` allowing income
+        to expand total spending capacity.[cite: 5]
+  ☐ Task 30: Final Device Regression, Backups & Verification[cite: 5]
+      - Full walkthrough on physical Samsung Galaxy S25 Ultra.[cite: 5]
+      - Verify JSON backup export/import preserves dynamic budget config.[cite: 5]
+  ☐ Task 26: Safe-to-Spend Home Screen AppWidget (Optional post-v1).[cite: 5]
+
+================================================================
+7. HOW TO RESUME NEXT SESSION
+================================================================
+
+1. cd "C:\Dev\Ivy-wallet"[cite: 5]
+2. git status && git log --oneline -5[cite: 5]
+3. Paste this handoff file to the AI.[cite: 5]
+4. State: "Handoff loaded. Generate Prompt 2 for Android Studio
+   covering the S25 Ultra speed dial centering, TransactionCard theming,
+   PieChartStatisticScreen theming, EditTransactionScreen, and AccountDetails."
+5. AI outputs the exact prompt to paste into Gemini / Android Studio.
+
+
+================================================================
+20. ADDENDUM — 2026-09-18 POST-SESSION AUDIT
+================================================================
+
+This addendum corrects omissions and contradictions found when
+comparing the 2026-09-18 handoff against the 14/09, 15/09, 17/09
+handoffs, SPECIFICATION.md, CALCULATION.md, and ENGINEERING.md.
+Where this addendum conflicts with earlier text in this file,
+this addendum wins.
+
+----------------------------------------------------------------
+20.1 MUST-RESOLVE DECISIONS BEFORE v1
+----------------------------------------------------------------
+
+☐ Reservation backup contradiction
+   Earlier work added reservations to backup/export/import.
+   Current handoff says reservations are dormant and “nothing
+   reads from or writes to them.”
+   DECISION: Either remove reservations from backup/export/import
+   so they are truly dormant, or amend D12 wording to say
+   “reservations exist in backup only as dormant data.”
+   Do not ship a contradictory statement.
+
+☐ Income inclusion model
+   SPECIFICATION.md §42 describes a per-income option:
+     “Include in current spending budget”
+   Task 29 says “Income inclusion toggle in budget config,”
+   which sounds global.
+   DECISION: Choose one:
+     A) global config toggle only, or
+     B) per-income transaction flag.
+   If B, it likely needs a new DB column/migration, which
+   conflicts with D13 “No further DB migrations expected.”
+   Resolve before Task 29 starts.
+
+☐ Clay vs Liquid Glass accent tokens
+   D9 says clay is dead.
+   The 18/09 landed notes mention warm copper, Nordic Moss, and
+   Burnished Espresso gradients.
+   DECISION: Confirm these are Liquid Glass accents, not a
+   reintroduction of clay. If they are clay-adjacent, rename or
+   replace them to avoid violating D9.
+
+☐ AMOLED theme
+   17/09 palette included AMOLED #000000.
+   18/09 mentions Liquid Glass dark mode but not AMOLED.
+   DECISION: Confirm AMOLED is implemented, intentionally
+   deferred, or dropped.
+
+☐ Optional calendar heatmap
+   15/09 Task 21 mentioned an optional Spendaily-style calendar
+   heatmap.
+   It is absent from 18/09.
+   DECISION: Keep as post-v1 optional, or explicitly drop it.
+
+☐ Account/category eligibility UI
+   DynamicBudgetConfigEntity supports includedAccountIds and
+   includedCategoryIds.
+   CALCULATION.md §20 says empty = all eligible.
+   The 18/09 handoff does not mention exposing these in the
+   budget config screen.
+   DECISION: Confirm whether they are configurable in v1 or
+   intentionally hidden.
+
+----------------------------------------------------------------
+20.2 TASK 27 — EXPANDED PERIOD SUMMARY + SPECIAL STATES
+----------------------------------------------------------------
+
+Below SafeToSpendCard, render a styled LiquidGlassCard:
+
+  Budget        450.00 TND
+  Spent         163.00 TND
+  Available     187.00 TND
+  Days left       5
+
+Reserved is intentionally omitted in v1.
+
+Also verify these states explicitly:
+
+☐ No budget configured
+   Hero area replaced with:
+     “Set a spending budget to see what’s safe to spend today.”
+   Plus setup action button.
+   NOT 0.00.
+
+☐ Loading
+   Placeholder. No fake zeros.
+
+☐ Calculation error
+   Never display a number if the calculation is known invalid.
+
+☐ Budget exhausted
+   Hero: 0.00
+   Caption: “You have used your available spending budget.”
+
+☐ Over today’s target but period has money
+   Hero: 0.00
+   Caption: “You are 12.00 over today’s target. Future
+             allowances will adjust.”
+   No red screen, no warning icon, no amber alert.
+
+☐ Last day of period
+   No tomorrow projection row.
+
+☐ Sticky header on scroll
+   Shows Safe-to-Spend hero amount.
+   If no budget/loading: blank/hidden.
+   Never shows Ivy total balance.
+
+----------------------------------------------------------------
+20.3 TASK 28 — EXPANDED “HOW IS THIS CALCULATED?”
+----------------------------------------------------------------
+
+Bottom sheet must include the relevant rows from SPEC §37:
+
+  Opening allowance             80.40 TND
+  Today’s allocation            -23.00 TND
+  Weekly allocation              -6.50 TND
+  Monthly allocation             -2.39 TND
+  Other adjustment                +8.89 TND
+  -----------------------------------------
+  Safe to spend                  57.40 TND
+
+Then period context:
+
+  Budget                         450.00 TND
+  Spent                          163.00 TND
+  Available                      187.00 TND
+  Days remaining                  5
+
+Only show relevant rows.
+Reserved is omitted in v1.
+Use simple language.
+Dashboard remains clean.
+
+----------------------------------------------------------------
+20.4 TASK 29 — INCOME INCLUSION DECISION REQUIRED
+----------------------------------------------------------------
+
+Do not start Task 29 until the decision in §20.1 is made.
+
+If global toggle:
+  - Add switch in DynamicBudgetConfigScreen.
+  - DynamicBudgetMapper must read it.
+  - Engine capacity must include eligible income.
+  - Tests required.
+
+If per-income flag:
+  - Requires schema change and migration.
+  - Conflicts with D13. Re-open D13 explicitly.
+  - Add UI in Add Income / Edit Income flow.
+  - Add mapper + engine tests.
+
+----------------------------------------------------------------
+20.5 TASK 30 — EXPANDED REGRESSION & VERIFICATION
+----------------------------------------------------------------
+
+Replace “Task 30 — Device regression + accessibility pass” with:
+
+☐ Full walkthrough on physical Samsung Galaxy S25 Ultra.
+☐ Verify JSON backup export/import preserves:
+   - Dynamic budget config
+   - transactions.allocationMode
+   - reservations, if kept in backup
+☐ Verify old 450-150.json backup still imports cleanly.
+☐ Accessibility pass:
+   - Screen-reader order matches visual hierarchy:
+     Safe amount → explanation → Add Expense → Add Income →
+     period summary → transactions
+   - Content descriptions on icons.
+   - Font scaling.
+   - Color not used alone for state.
+   - Touch targets.
+☐ Empty / loading / error / special states from §20.2.
+☐ Budget config reactivity:
+   - Changing budget/period/payday/eligibility triggers Home
+     recalculation.
+☐ Midnight / missed midnight:
+   - Close app Sunday, open Wednesday, verify reconstruction.
+☐ Refund / reversed expense behavior:
+   - Confirm mapper/engine follows Ivy semantics, or explicitly
+     mark out of scope for v1.
+☐ Apply-to-allowance selector gating:
+   - Only visible for Expense.
+   - Hidden entirely for Income/Transfer.
+   - Gated on configured budget.
+☐ GPL-3.0 guardrail:
+   - Removing legacy Ivy links must not remove GPL-3.0 license
+     text, Ivy copyright notices, or About screen credit.
+☐ Optional quality gates:
+   - Detekt
+   - Lint
+   - Unit tests
+   - Compose Stability
+   - Paparazzi baselines / visual verification.
+
+----------------------------------------------------------------
+20.6 PROMPT 3 GUARDRAILS — SETTINGS CLEANUP
+----------------------------------------------------------------
+
+When removing legacy Ivy release link/date:
+
+☐ Do NOT remove GPL-3.0 license text.
+☐ Do NOT remove Ivy copyright notices.
+☐ Keep About screen credit:
+     “Built on Ivy Wallet (GPL-3.0).”
+☐ Do not reintroduce external Ivy links.
+☐ Theme Preferences, Backup & Restore, and Appearance rows.
+
+----------------------------------------------------------------
+20.7 PROMPT 4 — SECONDARY MODULES
+----------------------------------------------------------------
+
+When styling Planned Payments, Budgets, and Loans tracker:
+
+☐ Do not wire reservations into v1.
+☐ Do not expose “Reserved” in period summary.
+☐ Do not add loans with interest to BudgetEngineInput.
+☐ Loans remain a tracker only.
+
+----------------------------------------------------------------
+20.8 QUALITY GATES FROM CI-TROUBLESHOOTING.md
+----------------------------------------------------------------
+
+Before v1 ships, consider running or verifying:
+
+☐ Detekt
+☐ Lint
+☐ Unit tests
+☐ Compose Stability
+☐ Paparazzi baselines / visual verification
+
+Liquid Glass is a large UI change, so Compose Stability and
+Paparazzi are especially likely to need attention.
+
+----------------------------------------------------------------
+20.9 VOICE / STRING VERIFICATION
+----------------------------------------------------------------
+
+Locked tone:
+  Yes: “You’re on track.”
+  No:  “Spend smarter!”
+  No:  “Great job!”
+  No:  “Oops, you overspent.”
+
+Required strings to verify:
+☐ Overspend:
+   “You are 12.00 over today’s target. Future allowances will
+    adjust.”
+☐ No budget:
+   “Set a spending budget to see what’s safe to spend today.”
+☐ Budget exhausted:
+   “You have used your available spending budget.”
+☐ Payday:
+   “Payday today”
+   “Left until payday · 1 day”
+   “Left until payday · N days”
+
+----------------------------------------------------------------
+20.10 ICON / BRANDING VERIFICATION
+----------------------------------------------------------------
+
+Confirm final icon followed the locked TND-inspired brief:
+☐ Wallet, brown leather, banknote sticking out.
+☐ Banknote green/teal evoking 5 TND, suggested #6B9080.
+☐ Arabesque geometric border.
+☐ Abstract portrait medallion, no real face.
+☐ Must NOT look related to Ivy Wallet’s leaf icon.
+☐ Adaptive icon + splash logo correct.
+
+If intentionally changed, note the change here.
+
+----------------------------------------------------------------
+20.11 END OF ADDENDUM
+================================================================
+
+
+
+
+
+
+================================================================
+END OF HANDOFF
+================================================================

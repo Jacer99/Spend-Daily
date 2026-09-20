@@ -1,0 +1,16 @@
+{
+  "short_name": "Spend Daily",
+  "name": "Spend Daily",
+  "description": "One number a day — money manager and dynamic daily budgeting",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0A0A0E",
+  "background_color": "#0A0A0E"
+}

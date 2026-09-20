@@ -1,0 +1,6 @@
+{
+  "name": "Spend Daily",
+  "description": "A local-first, single-currency personal finance tracker designed to eliminate money anxiety with one dynamic daily allowance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

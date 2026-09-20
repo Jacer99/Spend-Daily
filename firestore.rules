@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Verify user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Verify user's email is whitelisted or UID is in members
+    function isMember(householdId) {
+      let household = get(/databases/$(database)/documents/households/$(householdId)).data;
+      return isAuthenticated() && (
+        request.auth.uid in household.members ||
+        (request.auth.token.email != null && request.auth.token.email.lower() in household.memberEmails)
+      );
+    }
+
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Household root document
+    match /households/{householdId} {
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        request.auth.uid in resource.data.members ||
+        (request.auth.token.email != null && request.auth.token.email.lower() in resource.data.memberEmails)
+      );
+      allow update: if isAuthenticated() && (
+        request.auth.uid in resource.data.members ||
+        (request.auth.token.email != null && request.auth.token.email.lower() in resource.data.memberEmails)
+      );
+
+      // Subcollections (transactions, accounts, categories, budget_config)
+      match /{allChildren=**} {
+        allow read, write: if isMember(householdId);
+      }
+    }
+
+    // User profile documents (Android app: users/{userId}, Web: userProfiles/{userId})
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /userProfiles/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isUser(userId);
+    }
+
+    // Shared Budgets & Budget Data (Web interface compatibility)
+    match /budgets/{budgetId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /budgetData/{budgetId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
+

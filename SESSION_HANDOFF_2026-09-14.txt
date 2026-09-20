@@ -1,0 +1,317 @@
+================================================================
+IVY WALLET — DYNAMIC SAFE-TO-SPEND
+SESSION HANDOFF — 2026-09-14
+================================================================
+
+PURPOSE OF THIS FILE
+--------------------
+Bring the AI collaborator fully up to speed on what has been
+built, where we stopped, and what comes next. Send this file at
+the start of the next session before doing anything else.
+
+================================================================
+1. PROJECT IDENTITY
+================================================================
+
+Goal:  Fork Ivy Wallet, add a "safe to spend today" daily budget
+       brain on top. Keep all existing Ivy functionality.
+
+Origin repo:    https://github.com/Ivy-Apps/ivy-wallet (archived)
+My fork:        https://github.com/Jacer99/ivy-wallet-daily-budget
+Local path:     C:\Dev\Ivy-wallet
+Branch:         development
+Baseline tag:   ivy-original-baseline
+
+Remotes:
+  origin   → https://github.com/Jacer99/ivy-wallet-daily-budget.git
+  upstream → https://github.com/Ivy-Apps/ivy-wallet.git
+
+Environment:
+  Gradle wrapper:     8.8
+  Gradle JDK:         17  (C:\Users\JACER\.jdks\jbr-17.0.14)
+  Kotlin:             2.0.20
+  AGP:                8.5.2
+  Android Studio:     2026.1.4  (JBR is 25, do NOT use for Gradle)
+  Emulator:           Pixel 8, API 37.1
+  JAVA_HOME is set permanently (User scope) to jbr-17.0.14
+  DO NOT upgrade any dependency.
+
+Repository location note:
+  The repo was originally placed in OneDrive but OneDrive corrupted
+  the .git working tree (reparse point corruption). It has been
+  moved to C:\Dev\Ivy-wallet which is a normal local path.
+  Do NOT move it back into OneDrive.
+
+================================================================
+2. PROJECT CONTROL FILES (already committed)
+================================================================
+
+C:\Dev\Ivy-wallet\PROJECT_RULES.md           — non-negotiables
+C:\Dev\Ivy-wallet\docs\SPECIFICATION.md      — master product spec
+C:\Dev\Ivy-wallet\docs\CALCULATION.md        — math spec
+C:\Dev\Ivy-wallet\docs\ENGINEERING.md        — architecture + staging
+
+CALCULATION.md section 20 and 21 lock in the following:
+  - Uncategorized transactions: INCLUDED by default
+  - Account eligibility: separate toggle, not Ivy's includeInBalance
+  - Reservations paid late: use the ACTUAL payment date
+  - Salary payday clipping: local per-month
+  - Do NOT extend BudgetEntity (different concept)
+  - Do NOT extend PlannedPaymentRuleEntity (different concept)
+  - New code hooks DataObserver.writeEvents, not LaunchedEffect
+  - New entities use Long minor units, NOT Double
+
+CALCULATION.md also defines:
+  - Pool calculation in the daily ledger (section 21)
+  - Allocation modes (section 7)
+  - Allocation rounding (section 8)
+  - Rollover / overspend semantics (section 6)
+
+================================================================
+3. GIT HISTORY — COMPLETED COMMITS
+================================================================
+
+c159cd22  Add DynamicBudgetConfigStore, use case, and Hilt module
+39f12330  Add DynamicBudgetRepository reading real transactions from Ivy
+a2f26a36  Add end-to-end pipeline integration test for budget engine
+7d99eea4  Add DynamicBudgetMapper bridging Ivy transactions to engine input
+4afc261d  Add DynamicBudgetConfig domain model with tests
+6c348c86  Add CurrencyMinorUnits conversion utility with tests
+19c65afc  Clarify pool calculation in daily ledger
+75577670  Add DynamicBudgetEngine (safe-to-spend core) with tests
+95827c0e  Add ExpenseAllocationScheduler with exact-sum split algorithm
+17147030  Add BudgetPeriodResolver (weekly/monthly/salary/custom) with tests
+64c2d52e  Lock repository-specific decisions after recon
+255ab17b  Remove duplicate docs/PROJECT_RULES.md
+c094c35b  Add project control files (rules, spec, calculation, engineering)
+          ivy-original-baseline ← original Ivy state (tagged)
+
+All committed and pushed to origin/development.
+
+================================================================
+4. WHAT LIVES IN THE CODEBASE (new code only)
+================================================================
+
+All new code lives under:
+  shared/domain/src/main/java/com/ivy/domain/usecase/budget/
+  shared/domain/src/test/java/com/ivy/domain/usecase/budget/
+
+Files (10 production + 8 test):
+
+  PRODUCTION:
+    BudgetPeriodResolver.kt
+      BudgetPeriodType (Weekly / Monthly / Salary / Custom)
+      BudgetPeriod(start, end, type) with daysRemaining(today)
+      resolve(type, today) → BudgetPeriod
+
+    ExpenseAllocationScheduler.kt
+      AllocationMode { TODAY, WEEK, MONTH }
+      AllocationEntry(date, amount: Long)
+      schedule(amount, date, mode, periodEnd): List<AllocationEntry>
+      Guarantees Σ allocations == amount, all > 0, dates unique
+
+    DynamicBudgetEngine.kt
+      BudgetExpenseInput, BudgetEngineInput, BudgetSnapshot
+      calculate(input): BudgetSnapshot
+      Provides capacity, periodSpentRaw, periodReserved,
+      periodRemaining, daysRemaining, openingAllowance,
+      todayCharges, remainingAllowance, tomorrowProjection
+
+    CurrencyMinorUnits.kt
+      exponentFor(code): Int
+      toMinorUnits(Double, code): Long   (HALF_UP, symmetric)
+      toMajorUnits(Long, code): Double
+
+    DynamicBudgetConfig.kt
+      id, periodType, budgetLimitMinorUnits, currencyCode,
+      includedAccountIds, includedCategoryIds, includeIncomeInBudget
+      default() companion
+      Empty sets = "all eligible"
+
+    DynamicBudgetMapper.kt
+      map(List<Transaction>, config, today, zone): BudgetEngineInput
+      Filters to settled Expense, matching currency, eligible accounts
+        and categories. Converts Instant → LocalDate, Double → Long.
+      v1: allocation mode fixed to TODAY
+
+    DynamicBudgetRepository.kt
+      calculate(config, today, zone): BudgetSnapshot
+      Reads via TransactionRepository.findAllBetween()
+        - startInstant = period.start.atStartOfDay(zone).toInstant()
+        - endInstant   = period.end.atTime(23,59,59,999_999_999)
+                         .atZone(zone).toInstant()
+
+    DynamicBudgetConfigStore.kt        (interface)
+      suspend load(): DynamicBudgetConfig
+      suspend save(config)
+
+    InMemoryDynamicBudgetConfigStore.kt
+      @Singleton MutableStateFlow-backed
+
+    DynamicBudgetModule.kt
+      @Module @InstallIn(SingletonComponent::class) abstract class
+      @Binds InMemoryDynamicBudgetConfigStore → DynamicBudgetConfigStore
+
+    GetDynamicBudgetSnapshotUseCase.kt
+      suspend operator invoke(today, zone): BudgetSnapshot
+      Loads config, delegates to repository
+
+  TEST:
+    BudgetPeriodResolverTest.kt
+    ExpenseAllocationSchedulerTest.kt
+    DynamicBudgetEngineTest.kt
+    CurrencyMinorUnitsTest.kt
+    DynamicBudgetConfigTest.kt
+    DynamicBudgetMapperTest.kt
+    DynamicBudgetPipelineTest.kt          (end-to-end pure pipeline)
+    DynamicBudgetRepositoryTest.kt        (with mockk)
+    GetDynamicBudgetSnapshotUseCaseTest.kt
+
+ALL TESTS ARE GREEN. `assembleDebug` is GREEN.
+
+================================================================
+5. KEY CONVENTIONS WE ESTABLISHED
+================================================================
+
+- Money representation in engine: Long minor units.
+  TND has 3 decimals, so 100.50 TND = 100_500L.
+  Ivy persists money as Double — conversion happens only at the
+  mapper boundary via CurrencyMinorUnits.
+
+- Time conversion: Instant → LocalDate via ZoneId parameter.
+  The zone is NEVER global. It is a function parameter everywhere.
+
+- Allocation invariants (tested):
+  Σ allocation amounts == source amount (exact)
+  Allocation entries never create transactions
+  Zero-amount days are omitted from the result
+
+- Use case style:
+  class Foo @Inject constructor(...) {
+      suspend fun calculate(...) : X
+  }
+  or suspend operator fun invoke(...)
+
+- Test style:
+  JUnit4 + @RunWith(TestParameterInjector::class) + Kotest shouldBe
+  Backtick test names. Real objects (no mocks) unless mocking a
+  repository. coEvery/coVerify for suspend functions.
+
+- Common LLM mistake to watch for: Gemini writes "not in" instead
+  of "!in", "HALF_DOWN" instead of "HALF_UP", "verify" instead of
+  "coVerify". Always compile and test each file.
+
+================================================================
+6. ROADMAP — 14 TASKS REMAINING
+================================================================
+
+COMPLETED (9 tasks):
+  ✅ Task 1  BudgetPeriodResolver
+  ✅ Task 2  ExpenseAllocationScheduler
+  ✅ Task 3  DynamicBudgetEngine
+  ✅ Task 4  CurrencyMinorUnits
+  ✅ Task 5  DynamicBudgetConfig
+  ✅ Task 6  DynamicBudgetMapper
+  ✅ Task 7  End-to-end pipeline integration test
+  ✅ Task 8  DynamicBudgetRepository
+  ✅ Task 9  ConfigStore + UseCase + Hilt module
+
+REMAINING (14 tasks):
+
+  Phase C — Persistence (3 tasks):
+    ☐ Task 10  DynamicBudgetConfigEntity + DAO + Migration 130→131
+    ☐ Task 11  Room-backed DynamicBudgetConfigStore (replaces InMemory)
+    ☐ Task 12  Backup / export integration for new entity
+
+  Phase D — Reservations (2 tasks):
+    ☐ Task 13  Reservation entity + DAO + Migration 131→132
+    ☐ Task 14  Wire reservations into mapper + engine input
+
+  Phase E — Allocation mode on transactions (2 tasks):
+    ☐ Task 15  Add allocationMode column to transactions + Migration 132→133
+    ☐ Task 16  EditTransactionScreen: allocation mode selector
+
+  Phase F — Dashboard UI (3 tasks):
+    ☐ Task 17  Safe-to-spend card composable
+    ☐ Task 18  HomeViewModel + state wiring
+    ☐ Task 19  Add Expense / Add Income quick actions
+
+  Phase G — Reactive + historical (2 tasks):
+    ☐ Task 20  Hook DataObserver.writeEvents for reactive recalc
+    ☐ Task 21  Historical edit propagation
+
+  Phase H — Polish + regression (2 tasks):
+    ☐ Task 22  Accessibility, localization, empty / error states
+    ☐ Task 23  Full regression pass over untouched Ivy
+
+================================================================
+7. NEXT TASK IS TASK 10 — FIRST MIGRATION
+================================================================
+
+Task 10 is the first time we touch Ivy's Room schema. This is
+WHERE REAL USER DATA CAN BE DESTROYED. Do not rush.
+
+BEFORE STARTING TASK 10, run these four READ-ONLY commands and
+send their output:
+
+  cd "C:\Dev\Ivy-wallet"
+
+  Write-Output "=== Migration 129→130 example ==="
+  Get-Content "shared\data\core\src\main\java\com\ivy\data\db\migration\Migration129to130_LoanIncludeNote.kt"
+
+  Write-Output "=== IvyRoomDatabase version + migration registration ==="
+  Select-String -Path "shared\data\core\src\main\java\com\ivy\data\db\IvyRoomDatabase.kt" `
+      -Pattern "@Database|version|Migration129to130|Migration128to129" -Context 2,2
+
+  Write-Output "=== A small entity to mimic (TagEntity) ==="
+  Get-Content "shared\data\core\src\main\java\com\ivy\data\db\entity\TagEntity.kt"
+
+  Write-Output "=== The migration test style ==="
+  Get-Content "shared\data\core\src\androidTest\java\com\ivy\data\db\migration\Migration129to130Test.kt"
+
+Rationale:
+  - See Ivy's exact migration file naming + structure
+  - See how migrations are registered in IvyRoomDatabase
+  - See the entity format to match for DynamicBudgetConfigEntity
+  - See the androidTest style for migration verification
+
+Only after we see those four outputs will the AI write the Task
+10 prompt.
+
+================================================================
+8. DAILY WORKFLOW THAT HAS BEEN WORKING
+================================================================
+
+1. AI writes a detailed prompt for Gemini
+2. User pastes prompt into Gemini 3 Flash Preview
+3. Gemini writes 1–5 files, reports them verbatim
+4. User pastes Gemini's full output back to AI
+5. AI reviews: Python-isms, logic bugs, hidden Unicode, wrong
+   constructor syntax, wrong imports
+6. If issues: AI gives fix, user applies it (Android Studio is
+   the preferred editor — PowerShell here-strings are fragile)
+7. User runs: .\gradlew :shared:domain:testDebugUnitTest \
+                  --tests "com.ivy.domain.usecase.budget.FooTest"
+8. Green → commit → push
+9. Red → send failure output to AI, iterate
+
+NEVER trust Gemini's self-check. It has claimed correctness
+multiple times while shipping broken code (not in, HALF_DOWN,
+verify vs coVerify). Always compile and test.
+
+================================================================
+9. FILES TO VERIFY BEFORE NEXT SESSION STARTS
+================================================================
+
+Confirm these still exist and are committed:
+
+  cd "C:\Dev\Ivy-wallet"
+  git status
+  git log --oneline -3
+
+Expected: on branch development, clean working tree, HEAD at
+c159cd22.
+
+================================================================
+END OF HANDOFF
+================================================================
