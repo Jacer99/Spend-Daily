@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Spend Daily</string>
+    <string name="widget_name">Spend Daily Safe-to-Spend</string>
+    <string name="widget_description">Shows today\'s safe-to-spend allowance and fast action shortcuts.</string>
+</resources>
